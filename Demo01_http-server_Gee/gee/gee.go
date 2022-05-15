@@ -1,24 +1,26 @@
+/*
+框架入口
+*/
+
 package gee
 
 import (
-	"fmt"
 	"net/http"
 )
 
-type HandlerFunc func(http.ResponseWriter, *http.Request)
+type HandlerFunc func(*Context)
 
 type Engine struct {
-	route map[string]HandlerFunc // 路由映射
+	router *router
 }
 
 func NewEngine() *Engine {
-	return &Engine{route: make(map[string]HandlerFunc)}
+	return &Engine{router: newRouter()}
 }
 
 // 注册路由
 func (engine *Engine) addRoute(method string, pattern string, handler HandlerFunc) {
-	key := method + "-" + pattern
-	engine.route[key] = handler
+	engine.router.addRoute(method, pattern, handler)
 }
 
 func (engine *Engine) GET(pattern string, handler HandlerFunc) {
@@ -35,10 +37,6 @@ func (engine *Engine) Run(addr string) error {
 
 // ServeHTTP，就是handler
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	key := r.Method + "-" + r.URL.Path
-	if handler, ok := engine.route[key]; ok {
-		handler(w, r)
-	} else {
-		fmt.Fprintf(w, "404 NOT FOUND: %s\n", r.URL)
-	}
+	c := newContext(w, r)
+	engine.router.handle(c)
 }
